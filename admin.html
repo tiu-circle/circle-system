@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サークル費管理システム</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0e0e10; --surface: #17171a; --surface2: #1f1f24;
+    --border: #2e2e36; --accent: #7c6af7; --accent2: #4ecdc4;
+    --success: #2ecc71; --warn: #f39c12; --danger: #e74c3c;
+    --text: #e8e8f0; --text-muted: #888899; --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  .login-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 200; }
+  .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; width: 360px; text-align: center; }
+  .login-icon { font-size: 40px; margin-bottom: 16px; }
+  .login-title { font-family: 'Space Mono', monospace; font-size: 16px; margin-bottom: 6px; }
+  .login-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 28px; }
+  .login-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 16px; padding: 14px 16px; outline: none; text-align: center; letter-spacing: 0.2em; margin-bottom: 12px; transition: border-color 0.2s; }
+  .login-input:focus { border-color: var(--accent); }
+  .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent), #6058e0); color: white; border: none; border-radius: 10px; font-family: 'Noto Sans JP', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .login-btn:hover { opacity: 0.85; }
+  .login-error { font-size: 12px; color: var(--danger); margin-top: 10px; display: none; }
+  .login-error.show { display: block; }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-icon { width: 34px; height: 34px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .header-title { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; }
+  .header-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .logout-btn { padding: 7px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all 0.2s; }
+  .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 28px; overflow-x: auto; }
+  .tab { padding: 13px 22px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .main { padding: 24px 28px; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .section-title { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .stat-label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-value { font-family: 'Space Mono', monospace; font-size: 24px; font-weight: 700; }
+  .cv { color: var(--accent); } .sv { color: var(--success); } .wv { color: var(--warn); } .dv { color: var(--accent2); }
+
+  /* TOOLBAR / TABLE */
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .search-input { flex: 1; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; padding: 9px 14px; outline: none; transition: border-color 0.2s; }
+  .search-input:focus { border-color: var(--accent); }
+  .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted); transition: all 0.15s; white-space: nowrap; }
+  .pill.active, .pill:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--surface2); }
+  th { padding: 11px 13px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 11px 13px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .bs { background: rgba(46,204,113,0.15); color: var(--success); }
+  .bw { background: rgba(243,156,18,0.15); color: var(--warn); }
+  .bd { background: rgba(231,76,60,0.15); color: var(--danger); }
+  .bm { background: rgba(136,136,153,0.15); color: var(--text-muted); }
+  .ba { background: rgba(78,205,196,0.15); color: var(--accent2); }
+
+  .btn { padding: 10px 22px; border-radius: 8px; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #6058e0); color: white; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .btn-success { background: linear-gradient(135deg, var(--success), #27ae60); color: white; }
+  .btn-danger { background: linear-gradient(135deg, var(--danger), #c0392b); color: white; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .amount { font-family: 'Space Mono', monospace; }
+
+  /* CSV UPLOAD */
+  .upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 36px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface2); }
+  .upload-area:hover, .upload-area.drag { border-color: var(--accent); background: rgba(124,106,247,0.05); }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .upload-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 18px; }
+  .modal-field { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .modal-field:last-child { border-bottom: none; }
+  .modal-field-label { color: var(--text-muted); flex-shrink: 0; margin-right: 12px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 18px; justify-content: flex-end; flex-wrap: wrap; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; display: none; align-items: center; gap: 8px; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .toast.show { display: flex; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .loading-row td { text-align: center; padding: 32px; color: var(--text-muted); }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media(max-width:640px) {
+    .main { padding: 16px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .header { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">管理者ログイン</div>
+    <div class="login-sub">管理メンバー専用ページです</div>
+    <input class="login-input" id="passwordInput" type="password" placeholder="パスワード" onkeydown="if(event.key==='Enter')login()">
+    <button class="login-btn" onclick="login()">ログイン</button>
+    <div class="login-error" id="loginError">パスワードが違います</div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">🎓</div>
+    <div>
+      <div class="header-title">CIRCLE · ADMIN</div>
+      <div class="header-sub">サークル費管理システム</div>
+    </div>
+  </div>
+  <button class="logout-btn" onclick="logout()">ログアウト</button>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('members',this)">👥 メンバー一覧</div>
+  <div class="tab" onclick="switchTab('csv',this)">🏦 銀行明細CSV</div>
+  <div class="tab" onclick="switchTab('match',this)">🔗 照合・入会確認</div>
+  <div class="tab" onclick="switchTab('attend',this)">🗓 5/11 参加状況</div>
+</div>
+
+<div class="main">
+
+  <!-- MEMBERS -->
+  <div class="panel active" id="panel-members">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">総登録数</div><div class="stat-value cv" id="s-total">-</div></div>
+      <div class="stat-card"><div class="stat-label">振込確認済</div><div class="stat-value sv" id="s-matched">-</div></div>
+      <div class="stat-card"><div class="stat-label">未確認</div><div class="stat-value wv" id="s-unmatched">-</div></div>
+      <div class="stat-card"><div class="stat-label">本入会確定</div><div class="stat-value" id="s-confirmed">-</div></div>
+      <div class="stat-card"><div class="stat-label">5/11参加</div><div class="stat-value dv" id="s-attend">-</div></div>
+    </div>
+    <div class="toolbar">
+      <input class="search-input" id="memberSearch" placeholder="名前・学籍番号で検索..." oninput="renderMembers()">
+      <button class="btn btn-primary" onclick="loadMembers()">🔄 最新データ取得</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>学籍番号</th><th>氏名</th><th>フリガナ</th><th>学年・学部</th><th>メール</th><th>5/11</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="memberTableBody"><tr class="loading-row"><td colspan="8">📡 データを読み込み中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CSV -->
+  <div class="panel" id="panel-csv">
+    <div class="section-title">銀行明細CSVアップロード</div>
+    <div class="card">
+      <div class="upload-area" id="uploadArea"
+           onclick="document.getElementById('csvFileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="handleDrop(event)">
+        <div class="upload-icon">📂</div>
+        <div class="upload-title">CSVをドロップ または クリックして選択</div>
+        <div class="upload-sub">ネットバンキングからエクスポートしたCSVに対応</div>
+      </div>
+      <input type="file" id="csvFileInput" style="display:none" accept=".csv" onchange="handleCSVFile(event)">
+    </div>
+    <div class="card" style="border-color:rgba(124,106,247,0.3);background:rgba(124,106,247,0.05);">
+      <div style="font-size:13px;color:var(--accent);font-weight:700;margin-bottom:8px;">💡 CSVフォーマット</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.8;">
+        日付・振込人名（摘要）・入金額 の列を含むCSVに対応。<br>
+        振込人名のカタカナとフリガナを照合します。
+      </div>
+    </div>
+    <div id="csvPreviewArea" style="display:none;">
+      <div class="section-title">取り込んだ明細 (<span id="csvCount">0</span>件)</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>日付</th><th>振込人名</th><th>金額</th></tr></thead>
+          <tbody id="csvTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATCH -->
+  <div class="panel" id="panel-match">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="runMatching()">🔗 照合実行</button>
+      <div class="filter-pills">
+        <div class="pill active" onclick="setFilter('all',this)">すべて</div>
+        <div class="pill" onclick="setFilter('matched',this)">振込確認済</div>
+        <div class="pill" onclick="setFilter('unmatched',this)">未確認</div>
+        <div class="pill" onclick="setFilter('confirmed',this)">本入会確定</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>学籍番号</th><th>氏名</th><th>フリガナ</th><th>学年・学部</th><th>振込確認</th><th>照合金額</th><th>振込日</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="matchTableBody"><tr class="loading-row"><td colspan="9">メンバー一覧タブでデータを取得してから照合してください</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ATTEND -->
+  <div class="panel" id="panel-attend">
+    <div class="section-title">5月11日 参加状況</div>
+    <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-label">参加できる</div><div class="stat-value sv" id="a-yes">-</div></div>
+      <div class="stat-card"><div class="stat-label">参加できない</div><div class="stat-value wv" id="a-no">-</div></div>
+      <div class="stat-card"><div class="stat-label">未定</div><div class="stat-value" id="a-maybe">-</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>学籍番号</th><th>氏名</th><th>フリガナ</th><th>学年・学部</th><th>5/11参加</th></tr></thead>
+        <tbody id="attendTableBody"><tr class="loading-row"><td colspan="5">メンバー一覧タブでデータを取得してください</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+
+<script>
+  // ★ここにGASのURLを貼る
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzIJVKFawjeuWE6M3EDnfwlTwA9r9tl_hhY6_5pA9fnxEmxiFsvExOtIGUJxotbhEJ-4A/exec';
+
+  // ★管理者パスワード（変更してください）
+  const ADMIN_PASSWORD = 'circle2024';
+
+  let members = [];
+  let csvRows = [];
+  let currentFilter = 'all';
+
+  // LOGIN
+  function login() {
+    if (document.getElementById('passwordInput').value === ADMIN_PASSWORD) {
+      document.getElementById('loginOverlay').style.display = 'none';
+      loadMembers();
+    } else {
+      document.getElementById('loginError').classList.add('show');
+      document.getElementById('passwordInput').value = '';
+    }
+  }
+  function logout() {
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('passwordInput').value = '';
+  }
+
+  // TABS
+  function switchTab(tab, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'match') renderMatch();
+    if (tab === 'attend') renderAttend();
+  }
+
+  // LOAD FROM GAS
+  async function loadMembers() {
+    document.getElementById('memberTableBody').innerHTML = '<tr class="loading-row"><td colspan="8">📡 読み込み中...</td></tr>';
+    try {
+      const res = await fetch(GAS_URL + '?action=getMembers');
+      const data = await res.json();
+      members = data.members || [];
+      renderMembers();
+      updateStats();
+      showToast('✅ ' + members.length + '件のデータを取得しました');
+    } catch(e) {
+      document.getElementById('memberTableBody').innerHTML = '<tr class="loading-row"><td colspan="8">❌ データ取得に失敗しました。GAS URLを確認してください。</td></tr>';
+    }
+  }
+
+  function renderMembers() {
+    const q = (document.getElementById('memberSearch').value || '').toLowerCase();
+    const filtered = members.filter(m =>
+      (m.name||'').toLowerCase().includes(q) ||
+      (m.kana||'').toLowerCase().includes(q) ||
+      (m.id||'').toLowerCase().includes(q)
+    );
+    const tbody = document.getElementById('memberTableBody');
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><p>該当メンバーなし</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map(m => `
+      <tr>
+        <td><span style="font-family:'Space Mono',monospace;font-size:11px;">${m.id}</span></td>
+        <td>${m.name}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${m.kana}</td>
+        <td style="font-size:12px;">${m.year} ${m.dept}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${m.email}</td>
+        <td>${attendBadge(m.attend511)}</td>
+        <td>${statusBadge(m)}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick='showMemberModal(${JSON.stringify(m)})'>詳細</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function statusBadge(m) {
+    if (m.confirmed==='TRUE') return '<span class="badge bs">✓ 本入会確定</span>';
+    if (m.matched==='TRUE') return '<span class="badge bw">💳 振込確認済</span>';
+    return '<span class="badge bm">⏳ 未確認</span>';
+  }
+  function attendBadge(val) {
+    if (val==='yes') return '<span class="badge bs">✅ 参加</span>';
+    if (val==='no') return '<span class="badge bd">❌ 不参加</span>';
+    if (val==='maybe') return '<span class="badge bw">🤔 未定</span>';
+    return '<span class="badge bm">—</span>';
+  }
+
+  function updateStats() {
+    document.getElementById('s-total').textContent = members.length;
+    document.getElementById('s-matched').textContent = members.filter(m => m.matched==='TRUE'||m.confirmed==='TRUE').length;
+    document.getElementById('s-unmatched').textContent = members.filter(m => m.matched!=='TRUE'&&m.confirmed!=='TRUE').length;
+    document.getElementById('s-confirmed').textContent = members.filter(m => m.confirmed==='TRUE').length;
+    document.getElementById('s-attend').textContent = members.filter(m => m.attend511==='yes').length;
+  }
+
+  // CSV
+  function handleDrop(e) { e.preventDefault(); document.getElementById('uploadArea').classList.remove('drag'); if (e.dataTransfer.files[0]) processCSV(e.dataTransfer.files[0]); }
+  function handleCSVFile(e) { if (e.target.files[0]) processCSV(e.target.files[0]); }
+
+  function processCSV(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const lines = e.target.result.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { showToast('❗ CSVが空です'); return; }
+      const header = lines[0].split(',').map(h => h.trim().replace(/"/g,'').toLowerCase());
+      const dateIdx = header.findIndex(h => h.includes('日付')||h.includes('date')||h.includes('取引日'));
+      const nameIdx = header.findIndex(h => h.includes('摘要')||h.includes('振込')||h.includes('依頼人')||h.includes('name'));
+      const amtIdx  = header.findIndex(h => h.includes('入金')||h.includes('金額')||h.includes('amount'));
+      csvRows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim().replace(/"/g,''));
+        const nameVal = nameIdx >= 0 ? cols[nameIdx] : cols[1];
+        const amt = parseInt((amtIdx >= 0 ? cols[amtIdx] : cols[2]||'').replace(/[^0-9]/g,'') || '0');
+        if (!nameVal || amt === 0) continue;
+        csvRows.push({ date: dateIdx >= 0 ? cols[dateIdx] : cols[0], sender: nameVal, amount: amt });
+      }
+      renderCSV();
+      showToast('✅ ' + csvRows.length + '件の明細を取り込みました');
+    };
+    reader.readAsText(file, 'Shift-JIS');
+  }
+
+  function renderCSV() {
+    const area = document.getElementById('csvPreviewArea');
+    if (!csvRows.length) { area.style.display = 'none'; return; }
+    area.style.display = 'block';
+    document.getElementById('csvCount').textContent = csvRows.length;
+    document.getElementById('csvTableBody').innerHTML = csvRows.map((r,i) => `
+      <tr>
+        <td style="color:var(--text-muted);font-size:11px;">${i+1}</td>
+        <td style="font-size:12px;">${r.date}</td>
+        <td>${r.sender}</td>
+        <td class="amount" style="color:var(--success);">¥${r.amount.toLocaleString()}</td>
+      </tr>
+    `).join('');
+  }
+
+  // MATCHING
+  function runMatching() {
+    if (!csvRows.length) { showToast('❗ 先にCSVをアップロードしてください'); return; }
+    if (!members.length) { showToast('❗ 先にメンバーデータを取得してください'); return; }
+    let count = 0;
+    members.forEach(m => {
+      if (m.confirmed === 'TRUE') return;
+      const kana = (m.kana||'').replace(/\s/g,'').toUpperCase();
+      const match = csvRows.find(r => {
+        const s = r.sender.replace(/\s/g,'').toUpperCase();
+        return s.includes(kana) || kana.includes(s.substring(0, Math.min(4, s.length)));
+      });
+      if (match && m.matched !== 'TRUE') {
+        m.matched = 'TRUE'; m.matchedAmount = match.amount; m.matchedDate = match.date; count++;
+      }
+    });
+    renderMatch(); updateStats();
+    showToast('🔗 照合完了: ' + count + '件マッチ');
+  }
+
+  function renderMatch() {
+    const filtered = members.filter(m => {
+      if (currentFilter === 'matched') return m.matched==='TRUE' && m.confirmed!=='TRUE';
+      if (currentFilter === 'unmatched') return m.matched!=='TRUE' && m.confirmed!=='TRUE';
+      if (currentFilter === 'confirmed') return m.confirmed==='TRUE';
+      return true;
+    });
+    const tbody = document.getElementById('matchTableBody');
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🔍</div><p>該当なし</p></div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map(m => {
+      const amtOk = m.matchedAmount && parseInt(m.matchedAmount) === parseInt(m.amount||0);
+      return `<tr>
+        <td><span style="font-family:'Space Mono',monospace;font-size:11px;">${m.id}</span></td>
+        <td>${m.name}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${m.kana}</td>
+        <td style="font-size:12px;">${m.year} ${m.dept}</td>
+        <td>${(m.matched==='TRUE'||m.confirmed==='TRUE') ? '<span class="badge bs">✓ 確認</span>' : '<span class="badge bd">✗ 未確認</span>'}</td>
+        <td class="amount">${m.matchedAmount ? `<span style="color:${amtOk?'var(--success)':'var(--danger)'}">¥${parseInt(m.matchedAmount).toLocaleString()}</span>` : '—'}</td>
+        <td style="font-size:12px;">${m.matchedDate||'—'}</td>
+        <td>${statusBadge(m)}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick='showMatchModal(${JSON.stringify(m)})'>確認</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function setFilter(f, el) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    renderMatch();
+  }
+
+  // ATTEND
+  function renderAttend() {
+    document.getElementById('a-yes').textContent = members.filter(m => m.attend511==='yes').length;
+    document.getElementById('a-no').textContent = members.filter(m => m.attend511==='no').length;
+    document.getElementById('a-maybe').textContent = members.filter(m => m.attend511==='maybe').length;
+    document.getElementById('attendTableBody').innerHTML = members.map(m => `
+      <tr>
+        <td><span style="font-family:'Space Mono',monospace;font-size:11px;">${m.id}</span></td>
+        <td>${m.name}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${m.kana}</td>
+        <td style="font-size:12px;">${m.year} ${m.dept}</td>
+        <td>${attendBadge(m.attend511)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><p>データなし</p></div></td></tr>';
+  }
+
+  // MODALS
+  function showMemberModal(m) {
+    document.getElementById('modalTitle').textContent = '📋 メンバー詳細';
+    document.getElementById('modalBody').innerHTML = [
+      ['学籍番号', m.id], ['氏名', m.name], ['フリガナ', m.kana],
+      ['学年', m.year], ['学部・学科', `${m.dept} ${m.major||''}`],
+      ['メール', m.email||'—'], ['5/11参加', attendBadge(m.attend511)],
+      ['ステータス', statusBadge(m)], ['申請日時', m.timestamp||'—']
+    ].map(([l,v]) => `<div class="modal-field"><span class="modal-field-label">${l}</span><span>${v}</span></div>`).join('');
+    document.getElementById('modalActions').innerHTML = `<button class="btn btn-secondary btn-sm" onclick="closeModal()">閉じる</button>`;
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+
+  function showMatchModal(m) {
+    const amtOk = m.matchedAmount && parseInt(m.matchedAmount) === parseInt(m.amount||0);
+    document.getElementById('modalTitle').textContent = '🔗 振込照合・入会確認';
+    document.getElementById('modalBody').innerHTML = [
+      ['氏名', m.name], ['フリガナ', m.kana], ['学籍番号', m.id],
+      ['振込確認', (m.matched==='TRUE'||m.confirmed==='TRUE') ? '✅ 確認済み' : '❌ 未確認'],
+      ['照合金額', m.matchedAmount ? `<span class="amount" style="color:${amtOk?'var(--success)':'var(--danger)'}">¥${parseInt(m.matchedAmount).toLocaleString()}</span>` : '—'],
+      ['振込日', m.matchedDate||'—'], ['ステータス', statusBadge(m)]
+    ].map(([l,v]) => `<div class="modal-field"><span class="modal-field-label">${l}</span><span>${v}</span></div>`).join('') +
+    (!amtOk && m.matchedAmount ? '<div style="margin-top:10px;padding:10px;background:rgba(231,76,60,0.1);border-radius:8px;font-size:12px;color:var(--danger);">⚠️ 振込金額が想定と異なります</div>' : '');
+
+    const acts = [`<button class="btn btn-secondary btn-sm" onclick="closeModal()">閉じる</button>`];
+    if (m.confirmed !== 'TRUE') {
+      if (m.matched !== 'TRUE') acts.push(`<button class="btn btn-secondary btn-sm" onclick="updateStatus('${m.id}','matched')">手動で振込確認</button>`);
+      acts.push(`<button class="btn btn-success btn-sm" onclick="updateStatus('${m.id}','confirmed')">✓ 本入会確定</button>`);
+    } else {
+      acts.push(`<button class="btn btn-danger btn-sm" onclick="updateStatus('${m.id}','unconfirm')">確定を取り消す</button>`);
+    }
+    document.getElementById('modalActions').innerHTML = acts.join('');
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+
+  async function updateStatus(memberId, action) {
+    const m = members.find(m => m.id === memberId);
+    if (!m) return;
+    if (action === 'matched') { m.matched = 'TRUE'; }
+    else if (action === 'confirmed') { m.matched = 'TRUE'; m.confirmed = 'TRUE'; }
+    else if (action === 'unconfirm') { m.confirmed = 'FALSE'; }
+    closeModal(); renderMatch(); renderMembers(); updateStats();
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateStatus', id: memberId, status: action, matchedAmount: m.matchedAmount, matchedDate: m.matchedDate })
+      });
+      showToast(action==='confirmed' ? '🎉 本入会確定しました' : action==='matched' ? '💳 振込確認済みにしました' : '↩️ 確定を取り消しました');
+    } catch(e) { showToast('⚠️ スプレッドシートへの反映に失敗しました'); }
+  }
+
+  function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+  let toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
