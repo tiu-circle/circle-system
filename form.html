@@ -284,8 +284,26 @@
     if (!valid) return;
 
     const btn = document.getElementById('submitBtn');
+    const loadingSpan = document.querySelector('#loadingArea span');
     btn.disabled = true;
+    loadingSpan.textContent = '確認中...';
     document.getElementById('loadingArea').classList.add('show');
+
+    // 重複チェック
+    try {
+      const dupRes = await fetch(GAS_URL + '?action=checkDuplicate&id=' + encodeURIComponent(id));
+      const dupData = await dupRes.json();
+      if (dupData.exists) {
+        const errEl = document.getElementById('err-id');
+        errEl.textContent = 'この学籍番号はすでに登録されています';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        document.getElementById('loadingArea').classList.remove('show');
+        return;
+      }
+    } catch(e) { /* チェック失敗時はそのまま続行 */ }
+
+    loadingSpan.textContent = '送信中...';
 
     try {
       await fetch(GAS_URL, {
