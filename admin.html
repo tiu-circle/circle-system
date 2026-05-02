@@ -116,6 +116,14 @@
   .empty-icon { font-size: 40px; margin-bottom: 12px; }
   .loading-row td { text-align: center; padding: 32px; color: var(--text-muted); }
 
+  .edit-label { font-size: 11px; color: var(--text-muted); margin-top: 10px; display: block; margin-bottom: 3px; }
+  .edit-input, .edit-select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px; padding: 8px 12px; outline: none; transition: border-color 0.2s;
+  }
+  .edit-input:focus, .edit-select:focus { border-color: var(--accent); }
+
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -268,7 +276,7 @@
 
 <script>
   // ★ここにGASのURLを貼る
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbycG9XSGnqw1jQIMntFMyRoEbjuODDFLYsJdfohJv6E9MZCpulWmtOhFiXNP_YyAXaeZQ/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzIJVKFawjeuWE6M3EDnfwlTwA9r9tl_hhY6_5pA9fnxEmxiFsvExOtIGUJxotbhEJ-4A/exec';
 
   // ★管理者パスワード（変更してください）
   const ADMIN_PASSWORD = 'noah2026';
@@ -334,14 +342,16 @@
         <td><span style="font-family:'Space Mono',monospace;font-size:11px;">${m.id}</span></td>
         <td>${m.name}</td>
         <td style="font-size:12px;color:var(--text-muted);">${m.kana}</td>
-        <td style="font-size:12px;color:var(--text-muted);">${m.bankName||'—'}</td>
+        <td style="font-size:12px;color:var(--accent2);font-weight:bold;">${m.bankName||'—'}</td>
         <td style="font-size:12px;">${m.year} ${m.dept}</td>
         <td style="font-size:12px;color:var(--text-muted);">${m.email}</td>
         <td>${attendBadge(m.attend511)}</td>
         <td>${statusBadge(m)}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-secondary btn-sm" onclick='showMemberModal(${JSON.stringify(m)})'>詳細</button>
-          <button class="btn btn-sm" style="background:rgba(231,76,60,0.12);color:var(--danger);border:1px solid rgba(231,76,60,0.3);" onclick="confirmReset('${m.id}')">取り消し</button>
+          <button class="btn btn-sm" style="background:rgba(124,106,247,0.12);color:var(--accent);border:1px solid rgba(124,106,247,0.3);" onclick='showEditModal(${JSON.stringify(m)})'>✏️ 編集</button>
+          <button class="btn btn-sm" style="background:rgba(231,76,60,0.12);color:var(--danger);border:1px solid rgba(231,76,60,0.3);" onclick="confirmReset('${m.id}')">取消</button>
+          <button class="btn btn-sm" style="background:rgba(231,76,60,0.2);color:var(--danger);border:1px solid rgba(231,76,60,0.4);" onclick="confirmDelete('${m.id}')">🗑 削除</button>
         </td>
       </tr>
     `).join('');
@@ -449,7 +459,7 @@
         <td><span style="font-family:'Space Mono',monospace;font-size:11px;">${m.id}</span></td>
         <td>${m.name}</td>
         <td style="font-size:12px;color:var(--text-muted);">${m.kana}</td>
-        <td style="font-size:12px;color:var(--text-muted);">${m.bankName||'—'}</td>
+        <td style="font-size:12px;color:var(--accent2);font-weight:bold;">${m.bankName||'—'}</td>
         <td style="font-size:12px;">${m.year} ${m.dept}</td>
         <td>${(m.matched==='TRUE'||m.confirmed==='TRUE') ? '<span class="badge bs">✓ 確認</span>' : '<span class="badge bd">✗ 未確認</span>'}</td>
         <td class="amount">${m.matchedAmount ? `<span style="color:${amtOk?'var(--success)':'var(--danger)'}">¥${parseInt(m.matchedAmount).toLocaleString()}</span>` : '—'}</td>
@@ -538,6 +548,70 @@
 
   function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
 
+  function showEditModal(m) {
+    const esc = s => (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    document.getElementById('modalTitle').textContent = '✏️ メンバー編集';
+    document.getElementById('modalBody').innerHTML = `
+      <div class="modal-field">
+        <span class="modal-field-label">学籍番号</span>
+        <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text-muted);">${esc(m.id)}</span>
+      </div>
+      <label class="edit-label">氏名</label>
+      <input class="edit-input" id="edit-name" value="${esc(m.name)}">
+      <label class="edit-label">フリガナ（カタカナ）</label>
+      <input class="edit-input" id="edit-kana" value="${esc(m.kana)}">
+      <label class="edit-label">銀行名義人（カタカナ）</label>
+      <input class="edit-input" id="edit-bankName" value="${esc(m.bankName)}">
+      <label class="edit-label">メールアドレス</label>
+      <input class="edit-input" id="edit-email" value="${esc(m.email)}">
+      <label class="edit-label">学年</label>
+      <select class="edit-select" id="edit-year">
+        ${['1年','2年','3年','4年','修士1年','修士2年'].map(y => `<option value="${y}"${m.year===y?' selected':''}>${y}</option>`).join('')}
+      </select>
+      <label class="edit-label">学部</label>
+      <input class="edit-input" id="edit-dept" value="${esc(m.dept)}">
+      <label class="edit-label">学科</label>
+      <input class="edit-input" id="edit-major" value="${esc(m.major)}">
+      <label class="edit-label">5/11参加</label>
+      <select class="edit-select" id="edit-attend511">
+        <option value="yes"${m.attend511==='yes'?' selected':''}>✅ 参加できる</option>
+        <option value="no"${m.attend511==='no'?' selected':''}>❌ 参加できない</option>
+      </select>
+    `;
+    document.getElementById('modalActions').innerHTML = `
+      <button class="btn btn-secondary btn-sm" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary btn-sm" onclick="updateMember('${esc(m.id)}')">保存</button>
+    `;
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+
+  async function updateMember(id) {
+    const name      = document.getElementById('edit-name').value.trim();
+    const kana      = document.getElementById('edit-kana').value.trim();
+    const bankName  = document.getElementById('edit-bankName').value.trim();
+    const email     = document.getElementById('edit-email').value.trim();
+    const year      = document.getElementById('edit-year').value;
+    const dept      = document.getElementById('edit-dept').value.trim();
+    const major     = document.getElementById('edit-major').value.trim();
+    const attend511 = document.getElementById('edit-attend511').value;
+
+    closeModal();
+    const m = members.find(m => m.id === id);
+    if (m) { m.name = name; m.kana = kana; m.bankName = bankName; m.email = email; m.year = year; m.dept = dept; m.major = major; m.attend511 = attend511; }
+    renderMembers(); updateStats();
+
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateMember', id, name, kana, bankName, email, year, dept, major, attend511 })
+      });
+      showToast('✅ ' + id + ' を更新しました');
+      await new Promise(r => setTimeout(r, 2000));
+      loadMembers();
+    } catch(e) { showToast('⚠️ スプレッドシートへの反映に失敗しました'); }
+  }
+
   function confirmReset(memberId) {
     if (!confirm('本当に取り消しますか？\n振込確認・本入会確定がリセットされます。')) return;
     resetMember(memberId);
@@ -555,6 +629,7 @@
         body: JSON.stringify({ action: 'resetMember', id: memberId })
       });
       showToast('↩️ ' + memberId + ' の確認を取り消しました');
+      await new Promise(r => setTimeout(r, 2000));
       loadMembers();
     } catch(e) { showToast('⚠️ スプレッドシートへの反映に失敗しました'); }
   }
@@ -566,6 +641,32 @@
     el.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  function confirmDelete(memberId) {
+    const m = members.find(m => m.id === memberId);
+    const name = m ? m.name : memberId;
+    if (!confirm(`【${name}】を完全に削除しますか？\nこの操作は取り消せません。`)) return;
+    deleteMember(memberId);
+  }
+
+  async function deleteMember(memberId) {
+    members = members.filter(m => m.id !== memberId);
+    renderMembers();
+    updateStats();
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deleteMember', id: memberId })
+      });
+      showToast('🗑️ ' + memberId + ' を削除しました');
+      await new Promise(r => setTimeout(r, 2000));
+      loadMembers();
+    } catch(e) {
+      showToast('⚠️ 失敗しました');
+      loadMembers();
+    }
   }
 </script>
 </body>
