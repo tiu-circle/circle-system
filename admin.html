@@ -178,8 +178,8 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>学籍番号</th><th>氏名</th><th>フリガナ</th><th>学年・学部</th><th>メール</th><th>5/11</th><th>ステータス</th><th>操作</th></tr></thead>
-        <tbody id="memberTableBody"><tr class="loading-row"><td colspan="8">📡 データを読み込み中...</td></tr></tbody>
+        <thead><tr><th>学籍番号</th><th>氏名</th><th>フリガナ</th><th>銀行名義人</th><th>学年・学部</th><th>メール</th><th>5/11</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="memberTableBody"><tr class="loading-row"><td colspan="9">📡 データを読み込み中...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -230,8 +230,8 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>学籍番号</th><th>氏名</th><th>フリガナ</th><th>学年・学部</th><th>振込確認</th><th>照合金額</th><th>振込日</th><th>ステータス</th><th>操作</th></tr></thead>
-        <tbody id="matchTableBody"><tr class="loading-row"><td colspan="9">メンバー一覧タブでデータを取得してから照合してください</td></tr></tbody>
+        <thead><tr><th>学籍番号</th><th>氏名</th><th>フリガナ</th><th>銀行名義人</th><th>学年・学部</th><th>振込確認</th><th>照合金額</th><th>振込日</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="matchTableBody"><tr class="loading-row"><td colspan="10">メンバー一覧タブでデータを取得してから照合してください</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -313,7 +313,7 @@
       updateStats();
       showToast('✅ ' + members.length + '件のデータを取得しました');
     } catch(e) {
-      document.getElementById('memberTableBody').innerHTML = '<tr class="loading-row"><td colspan="8">❌ データ取得に失敗しました。GAS URLを確認してください。</td></tr>';
+      document.getElementById('memberTableBody').innerHTML = '<tr class="loading-row"><td colspan="9">❌ データ取得に失敗しました。GAS URLを確認してください。</td></tr>';
     }
   }
 
@@ -326,7 +326,7 @@
     );
     const tbody = document.getElementById('memberTableBody');
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><p>該当メンバーなし</p></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📋</div><p>該当メンバーなし</p></div></td></tr>';
       return;
     }
     tbody.innerHTML = filtered.map(m => `
@@ -334,11 +334,15 @@
         <td><span style="font-family:'Space Mono',monospace;font-size:11px;">${m.id}</span></td>
         <td>${m.name}</td>
         <td style="font-size:12px;color:var(--text-muted);">${m.kana}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${m.bankName||'—'}</td>
         <td style="font-size:12px;">${m.year} ${m.dept}</td>
         <td style="font-size:12px;color:var(--text-muted);">${m.email}</td>
         <td>${attendBadge(m.attend511)}</td>
         <td>${statusBadge(m)}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick='showMemberModal(${JSON.stringify(m)})'>詳細</button></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick='showMemberModal(${JSON.stringify(m)})'>詳細</button>
+          <button class="btn btn-sm" style="background:rgba(231,76,60,0.12);color:var(--danger);border:1px solid rgba(231,76,60,0.3);" onclick="confirmReset('${m.id}')">取り消し</button>
+        </td>
       </tr>
     `).join('');
   }
@@ -351,7 +355,6 @@
   function attendBadge(val) {
     if (val==='yes') return '<span class="badge bs">✅ 参加</span>';
     if (val==='no') return '<span class="badge bd">❌ 不参加</span>';
-    if (val==='maybe') return '<span class="badge bw">🤔 未定</span>';
     return '<span class="badge bm">—</span>';
   }
 
@@ -413,9 +416,12 @@
     members.forEach(m => {
       if (m.confirmed === 'TRUE') return;
       const kana = (m.kana||'').replace(/\s/g,'').toUpperCase();
+      const bankName = (m.bankName||'').replace(/\s/g,'').toUpperCase();
       const match = csvRows.find(r => {
         const s = r.sender.replace(/\s/g,'').toUpperCase();
-        return s.includes(kana) || kana.includes(s.substring(0, Math.min(4, s.length)));
+        const matchKana = s.includes(kana) || kana.includes(s.substring(0, Math.min(4, s.length)));
+        const matchBank = bankName && (s.includes(bankName) || bankName.includes(s.substring(0, Math.min(4, s.length))));
+        return matchKana || matchBank;
       });
       if (match && m.matched !== 'TRUE') {
         m.matched = 'TRUE'; m.matchedAmount = match.amount; m.matchedDate = match.date; count++;
@@ -434,7 +440,7 @@
     });
     const tbody = document.getElementById('matchTableBody');
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🔍</div><p>該当なし</p></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><p>該当なし</p></div></td></tr>';
       return;
     }
     tbody.innerHTML = filtered.map(m => {
@@ -443,6 +449,7 @@
         <td><span style="font-family:'Space Mono',monospace;font-size:11px;">${m.id}</span></td>
         <td>${m.name}</td>
         <td style="font-size:12px;color:var(--text-muted);">${m.kana}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${m.bankName||'—'}</td>
         <td style="font-size:12px;">${m.year} ${m.dept}</td>
         <td>${(m.matched==='TRUE'||m.confirmed==='TRUE') ? '<span class="badge bs">✓ 確認</span>' : '<span class="badge bd">✗ 未確認</span>'}</td>
         <td class="amount">${m.matchedAmount ? `<span style="color:${amtOk?'var(--success)':'var(--danger)'}">¥${parseInt(m.matchedAmount).toLocaleString()}</span>` : '—'}</td>
@@ -481,6 +488,7 @@
     document.getElementById('modalTitle').textContent = '📋 メンバー詳細';
     document.getElementById('modalBody').innerHTML = [
       ['学籍番号', m.id], ['氏名', m.name], ['フリガナ', m.kana],
+      ['銀行名義人', m.bankName||'—'],
       ['学年', m.year], ['学部・学科', `${m.dept} ${m.major||''}`],
       ['メール', m.email||'—'], ['5/11参加', attendBadge(m.attend511)],
       ['ステータス', statusBadge(m)], ['申請日時', m.timestamp||'—']
@@ -493,7 +501,7 @@
     const amtOk = m.matchedAmount && parseInt(m.matchedAmount) === parseInt(m.amount||0);
     document.getElementById('modalTitle').textContent = '🔗 振込照合・入会確認';
     document.getElementById('modalBody').innerHTML = [
-      ['氏名', m.name], ['フリガナ', m.kana], ['学籍番号', m.id],
+      ['氏名', m.name], ['フリガナ', m.kana], ['銀行名義人', m.bankName||'—'], ['学籍番号', m.id],
       ['振込確認', (m.matched==='TRUE'||m.confirmed==='TRUE') ? '✅ 確認済み' : '❌ 未確認'],
       ['照合金額', m.matchedAmount ? `<span class="amount" style="color:${amtOk?'var(--success)':'var(--danger)'}">¥${parseInt(m.matchedAmount).toLocaleString()}</span>` : '—'],
       ['振込日', m.matchedDate||'—'], ['ステータス', statusBadge(m)]
@@ -529,6 +537,27 @@
   }
 
   function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+  function confirmReset(memberId) {
+    if (!confirm('本当に取り消しますか？\n振込確認・本入会確定がリセットされます。')) return;
+    resetMember(memberId);
+  }
+
+  async function resetMember(memberId) {
+    const m = members.find(m => m.id === memberId);
+    if (!m) return;
+    m.matched = 'FALSE'; m.confirmed = 'FALSE'; m.matchedAmount = null; m.matchedDate = null;
+    renderMembers(); renderMatch(); updateStats();
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resetMember', id: memberId })
+      });
+      showToast('↩️ ' + memberId + ' の確認を取り消しました');
+      loadMembers();
+    } catch(e) { showToast('⚠️ スプレッドシートへの反映に失敗しました'); }
+  }
 
   let toastTimer;
   function showToast(msg) {
