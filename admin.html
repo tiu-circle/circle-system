@@ -351,7 +351,7 @@
           <button class="btn btn-secondary btn-sm" onclick='showMemberModal(${JSON.stringify(m)})'>詳細</button>
           <button class="btn btn-sm" style="background:rgba(124,106,247,0.12);color:var(--accent);border:1px solid rgba(124,106,247,0.3);" onclick='showEditModal(${JSON.stringify(m)})'>✏️ 編集</button>
           <button class="btn btn-sm" style="background:rgba(231,76,60,0.12);color:var(--danger);border:1px solid rgba(231,76,60,0.3);" onclick="confirmReset('${m.id}')">取消</button>
-          <button class="btn btn-sm" style="background:rgba(231,76,60,0.2);color:var(--danger);border:1px solid rgba(231,76,60,0.4);" onclick="confirmDelete('${m.id}')">🗑 削除</button>
+          <button class="btn btn-sm" style="background:rgba(231,76,60,0.2);color:var(--danger);border:1px solid rgba(231,76,60,0.4);" onclick="confirmDelete('${m.id}')">🗑</button>
         </td>
       </tr>
     `).join('');
